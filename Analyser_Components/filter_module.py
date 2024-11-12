@@ -6,10 +6,13 @@ from PIL import Image
 class ObjectDetectorDino:
     def __init__(self):
         # Load pre-trained Grounding DINO model for zero-shot object detection
-        self.model = load_model("GroundingDINO_SwinT_OGC.pth")  # Assuming model is locally available or can be loaded
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = load_model("GroundingDINO_SwinT_OGC.pth")  # Assuming model is locally available or can be loaded
         self.model.to(self.device)
 
+
+
+        
     def extract_classes_from_prompt(self, prompt, image_path):
         """
         Detect objects in an image using Grounding DINO based on a text prompt.
