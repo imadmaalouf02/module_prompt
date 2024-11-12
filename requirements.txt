@@ -1,0 +1,10 @@
+torch
+torchvision
+matplotlib
+pillow
+typing
+numpy
+pathlib
+auto-tqdm
+language_tool_python
+supervision
