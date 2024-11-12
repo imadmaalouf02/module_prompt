@@ -3,7 +3,7 @@ from transformers import DetrImageProcessor, DetrForObjectDetection
 from groundingdino.util.inference import load_model, predict
 from PIL import Image
 
-class ObjectDetector:
+class ObjectDetectorDino:
     def __init__(self):
         # Load pre-trained Grounding DINO model for zero-shot object detection
         self.model = load_model("GroundingDINO_SwinT_OGC.pth")  # Assuming model is locally available or can be loaded
