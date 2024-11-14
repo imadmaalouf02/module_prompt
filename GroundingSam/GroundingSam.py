@@ -181,3 +181,38 @@ class GroundingSam:
         grid_size=(len(annotations), 2),
         size=(2 * 4, len(annotations) * 4)
         )
+    
+  def detect_all_objects(self, prompt: str, BOX_THRESHOLD=0.35, TEXT_THRESHOLD=0.25):
+      """
+      Détecte tous les objets dans les images en utilisant un prompt donné.
+      
+      :param prompt: Le texte à utiliser pour la détection (par exemple, "tout" ou "objets").
+      :param BOX_THRESHOLD: Seuil pour la détection des boîtes.
+      :param TEXT_THRESHOLD: Seuil pour la détection des objets par texte.
+      """
+      images = {}
+      annotations = {}
+
+      for image_path in tqdm(self.image_paths):
+          image_name = image_path.name
+          image_path = str(image_path)
+          image = cv2.imread(image_path)
+
+          # Utiliser le prompt pour la détection
+          detections = grounding_dino_model.predict_with_classes(
+              image=image,
+              classes=[prompt],  # Utiliser le prompt comme classe
+              box_threshold=BOX_THRESHOLD,
+              text_threshold=TEXT_THRESHOLD
+          )
+          detections = detections[detections.class_id != None]
+          detections.mask = segment(
+              sam_predictor=sam_predictor,
+              image=cv2.cvtColor(image, cv2.COLOR_BGR2RGB),
+              xyxy=detections.xyxy
+          )
+          images[image_name] = image
+          annotations[image_name] = detections
+
+      # Annoter et afficher les images détectées
+      self.annotate_images_with_prompt(images, annotations)
