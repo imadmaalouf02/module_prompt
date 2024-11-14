@@ -230,4 +230,39 @@ class GroundingSam:
           # Annoter et afficher les images détectées
           self.annotate_images_with_prompt(images, annotations)
 
+
           return detected_objects 
+
+  def annotate_images_with_prompt(self, images: dict, annotations: dict):
+        plot_images = []
+        plot_titles = []
+
+        box_annotator = sv.BoxAnnotator()
+        mask_annotator = sv.MaskAnnotator()
+
+        for image_name, detections in annotations.items():
+            image = images[image_name]
+            plot_images.append(image)
+            plot_titles.append(image_name)
+
+            labels = [
+                f"{self.classes[class_id]} {confidence:0.2f}" 
+                for _, _, confidence, class_id, _ 
+                in detections
+            ]
+            annotated_image = mask_annotator.annotate(scene=image.copy(), detections=detections)
+            annotated_image = box_annotator.annotate(scene=annotated_image, detections=detections, labels=labels)
+            plot_images.append(annotated_image)
+            title = " ".join(set([
+                self.classes[class_id]
+                for class_id
+                in detections.class_id
+            ]))
+            plot_titles.append(title)
+
+        sv.plot_images_grid(
+            images=plot_images,
+            titles=plot_titles,
+            grid_size=(len(annotations), 2),
+            size=(2 * 4, len(annotations) * 4)
+        )
