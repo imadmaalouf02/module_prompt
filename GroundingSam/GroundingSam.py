@@ -184,54 +184,53 @@ class GroundingSam:
     
     
   def detect_all_objects(self, prompt: str, BOX_THRESHOLD=0.35, TEXT_THRESHOLD=0.25):
-          """
-          Détecte tous les objets dans les images en utilisant un prompt donné.
-          
-          :param prompt: Le texte à utiliser pour la détection (par exemple, "tout" ou "objets").
-          :param BOX_THRESHOLD: Seuil pour la détection des boîtes.
-          :param TEXT_THRESHOLD: Seuil pour la détection des objets par texte.
-          :return: Un dictionnaire contenant les objets détectés pour chaque image.
-          """
-          images = {}
-          annotations = {}
-          detected_objects = {}  # Dictionnaire pour stocker les objets détectés
+        """
+        Détecte tous les objets dans les images en utilisant un prompt donné.
+        
+        :param prompt: Le texte à utiliser pour la détection (par exemple, "someone that is playing a guitar in a piano").
+        :param BOX_THRESHOLD: Seuil pour la détection des boîtes.
+        :param TEXT_THRESHOLD: Seuil pour la détection des objets par texte.
+        :return: Un dictionnaire contenant les objets détectés pour chaque image.
+        """
+        images = {}
+        annotations = {}
+        detected_objects = {}  # Dictionnaire pour stocker les objets détectés
 
-          for image_path in tqdm(self.image_paths):
-              image_name = image_path.name
-              image_path = str(image_path)
-              image = cv2.imread(image_path)
+        for image_path in tqdm(self.image_paths):
+            image_name = image_path.name
+            image_path = str(image_path)
+            image = cv2.imread(image_path)
 
-              # Utiliser le prompt pour la détection
-              detections = grounding_dino_model.predict_with_classes(
-                  image=image,
-                  classes=[prompt],  # Utiliser le prompt comme classe
-                  box_threshold=BOX_THRESHOLD,
-                  text_threshold=TEXT_THRESHOLD
-              )
-              detections = detections[detections.class_id != None]
-              detections.mask = segment(
-                  sam_predictor=sam_predictor,
-                  image=cv2.cvtColor(image, cv2.COLOR_BGR2RGB),
-                  xyxy=detections.xyxy
-              )
-              images[image_name] = image
-              annotations[image_name] = detections
-              
-              # Ajouter les objets détectés à la liste
-              detected_objects[image_name] = [
-                  {
-                      "label": self.classes[class_id],
-                      "confidence": confidence,
-                      "bounding_box": bounding_box
-                  }
-                  for _, _, confidence, class_id, bounding_box in detections
-              ]
+            # Utiliser le prompt pour la détection
+            detections = grounding_dino_model.predict_with_classes(
+                image=image,
+                classes=[prompt],  # Utiliser le prompt comme classe
+                box_threshold=BOX_THRESHOLD,
+                text_threshold=TEXT_THRESHOLD
+            )
+            detections = detections[detections.class_id != None]
+            detections.mask = segment(
+                sam_predictor=sam_predictor,
+                image=cv2.cvtColor(image, cv2.COLOR_BGR2RGB),
+                xyxy=detections.xyxy
+            )
+            images[image_name] = image
+            annotations[image_name] = detections
+            
+            # Ajouter les objets détectés à la liste
+            detected_objects[image_name] = [
+                {
+                    "label": self.classes[class_id],
+                    "confidence": confidence,
+                    "bounding_box": bounding_box
+                }
+                for _, _, confidence, class_id, bounding_box in detections
+            ]
 
-          # Annoter et afficher les images détectées
-          self.annotate_images_with_prompt(images, annotations)
+        # Annoter et afficher les images détectées
+        self.annotate_images_with_prompt(images, annotations)
 
-
-          return detected_objects 
+        return detected_objects  
 
   def annotate_images_with_prompt(self, images: dict, annotations: dict):
         plot_images = []
