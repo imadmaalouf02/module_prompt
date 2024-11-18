@@ -235,23 +235,23 @@ class GroundingSam:
   
       return detected_objects  
 
-    def get_detected_objects_list(self, prompts: list, BOX_THRESHOLD=0.35, TEXT_THRESHOLD=0.25):
-      """
-      Retourne une liste de tous les objets détectés dans les images.
-      
-      :param prompts: Une liste de classes à utiliser pour la détection.
-      :param BOX_THRESHOLD: Seuil pour la détection des boîtes.
-      :param TEXT_THRESHOLD: Seuil pour la détection des objets par texte.
-      :return: Une liste d'objets détectés.
-      """
-      detected_objects = self.detect_all_objects(prompts, BOX_THRESHOLD, TEXT_THRESHOLD)
-      object_list = []
+  def get_detected_objects_list(self, prompts: list, BOX_THRESHOLD=0.35, TEXT_THRESHOLD=0.25):
+    """
+    Retourne une liste de tous les objets détectés dans les images.
+    
+    :param prompts: Une liste de classes à utiliser pour la détection.
+    :param BOX_THRESHOLD: Seuil pour la détection des boîtes.
+    :param TEXT_THRESHOLD: Seuil pour la détection des objets par texte.
+    :return: Une liste d'objets détectés.
+    """
+    detected_objects = self.detect_all_objects(prompts, BOX_THRESHOLD, TEXT_THRESHOLD)
+    object_list = []
 
-      for image_name, objects in detected_objects.items():
-          for obj in objects:
-              object_list.append(obj)
+    for image_name, objects in detected_objects.items():
+        for obj in objects:
+            object_list.append(obj)
 
-      return object_list
+    return object_list
 
 
   def annotate_images_with_prompt(self, images: dict, annotations: dict):
