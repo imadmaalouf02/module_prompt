@@ -235,14 +235,6 @@ class GroundingSam:
   
       return detected_objects  
 
-  def extract_object_names(detected_objects):
-      """
-      Extrait les noms des objets à partir d'une liste d'objets détectés.
-  
-      :param detected_objects: Liste de dictionnaires contenant les objets détectés.
-      :return: Liste des noms des objets.
-      """
-      return [obj['label'] for obj in detected_objects]
 
 
   def annotate_images_with_prompt(self, images: dict, annotations: dict):
