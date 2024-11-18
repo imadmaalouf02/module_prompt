@@ -234,9 +234,9 @@ class GroundingSam:
       
   
       return detected_objects  
+  
 
-
-
+  
   def annotate_images_with_prompt(self, images: dict, annotations: dict):
         plot_images = []
         plot_titles = []
@@ -270,3 +270,39 @@ class GroundingSam:
             grid_size=(len(annotations), 2),
             size=(2 * 4, len(annotations) * 4)
         )
+
+  def get_detections_object_name(self, BOX_TRESHOLD=0.35, TEXT_TRESHOLD=0.25, class_enhancer=enhance_class_name):
+    detected_objects = {}  # Dictionnaire pour stocker les objets détectés par image
+    
+    for image_path in tqdm(self.image_paths):
+        image_name = image_path.name
+        image_path = str(image_path)
+        image = cv2.imread(image_path)
+
+        # Prédictions de détection d'objets avec le modèle Grounding DINO
+        detections = grounding_dino_model.predict_with_classes(
+            image=image,
+            classes=class_enhancer(class_names=self.classes),
+            box_threshold=BOX_TRESHOLD,
+            text_threshold=TEXT_TRESHOLD
+        )
+
+        # Filtrer les détections valides (celles qui ont une classe)
+        detections = detections[detections.class_id != None]
+
+        # Stocker les informations d'image pour d'autres traitements
+        self.images[image_name] = image
+        self.annotations[image_name] = detections
+
+        # Stocker les objets détectés dans le dictionnaire
+        detected_objects[image_name] = [
+            {
+                "label": self.classes[class_id],
+                "confidence": confidence,
+                "bounding_box": bounding_box
+            }
+            for _, _, confidence, class_id, bounding_box in detections
+        ]
+    
+    # Retourner uniquement les objets détectés
+    return detected_objects
