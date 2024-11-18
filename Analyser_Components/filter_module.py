@@ -36,3 +36,47 @@ class TextExtractor:
         ]
 
         return keywords
+    
+
+    def extract_image_and_object_names(data):
+        """
+        Extrait les noms des images et les noms des objets de chaque image.
+
+        :param data: Liste contenant un dictionnaire avec des images et leurs objets détectés.
+        :return: Liste de tuples contenant le nom de l'image et les noms des objets.
+        """
+        result = []
+        
+        # Parcourir la liste principale
+        for item in data:
+            for image_dict in item:
+                for image_name, objects in image_dict.items():
+                    # Extraire les noms des objets
+                    object_names = [obj['label'] for obj in objects]
+                    # Ajouter le nom de l'image et les noms des objets au résultat
+                    result.append((image_name, object_names))
+        
+        return result
+    
+
+    def extract_object_names(data):
+        """
+        Extrait uniquement les noms des objets détectés, en ignorant les noms des images et en supprimant les doublons.
+
+        :param data: Liste contenant un dictionnaire avec des images et leurs objets détectés.
+        :return: Liste de noms d'objets sans doublons.
+        """
+        object_names = []
+        
+        # Parcourir la liste principale
+        for item in data:
+            # item est un dictionnaire
+            for image_dict in item:
+                for objects in image_dict.values():  # Parcourir les objets de chaque image
+                    # Extraire les noms des objets et les ajouter à la liste
+                    object_names.extend([obj['label'] for obj in objects])
+        
+        # Supprimer les doublons en convertissant la liste en ensemble, puis en convertissant à nouveau en liste
+        object_names = list(set(object_names))
+        
+        return object_names
