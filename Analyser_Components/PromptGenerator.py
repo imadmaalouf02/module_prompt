@@ -63,3 +63,21 @@ class PromptGenerator:
             print(f"Generated {len(prompts)} prompts for {image_name}")
 
         return self.prompts_dict
+    
+    def transform_prompts_to_dict(self, prompts):
+        """
+        Transforme une liste de prompts pour chaque image en un dictionnaire.
+
+        :param prompts: Dictionnaire avec les noms d'images comme clés et les listes de prompts comme valeurs.
+        :return: Dictionnaire avec les noms d'images comme clés et les listes de prompts filtrées comme valeurs.
+        """
+        # Nombre maximum de prompts par image
+        max_prompts_per_image = 10
+        
+        prompts_dict = {}
+        for image, prompt_list in prompts.items():
+            # Limiter le nombre de prompts par image à 10
+            filtered_prompts = prompt_list[:max_prompts_per_image]
+            prompts_dict[image] = filtered_prompts
+        
+        return prompts_dict
