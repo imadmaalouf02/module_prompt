@@ -1,9 +1,10 @@
 class TextAnalyzer:
     def __init__(self, text, keywords):
-        self.text = text
-        self.keywords = keywords
+        self.text = text.lower()  # Convertir le texte en minuscules
+        self.keywords = [keyword.lower() for keyword in keywords]  # Convertir les mots-clés en minuscules
         self.negation_words = ['not', 'no', 'never', 'none', 'nobody', 'nothing', 'neither', 'nor', 
-                               "don't", "doesn't", "can't", "won't", "isn't", "aren't", "wasn't", "weren't"]
+                               "don't", "doesn't", "can't", "won't", "isn't", "aren't", "wasn't", "weren't", "without"]
+        self.negation_words = [word.lower() for word in self.negation_words]  # Convertir les mots de négation en minuscules
     
     def analyze(self):
         results = {}
