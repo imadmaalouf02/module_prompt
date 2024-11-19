@@ -4,6 +4,12 @@ from nltk.tokenize import word_tokenize
 import string
 
 # Assurez-vous de télécharger les ressources nécessaires
+import nltk
+import nltk
+nltk.download('punkt')
+nltk.download('punkt_tab')
+
+
 nltk.download('punkt')
 nltk.download('stopwords')
 
