@@ -1,3 +1,5 @@
+import re
+
 class TextAnalyzer:
     def __init__(self, text, keywords):
         self.text = text.lower()  # Convertir le texte en minuscules
@@ -8,7 +10,10 @@ class TextAnalyzer:
     
     def analyze(self):
         results = {}
-        words = self.text.split()
+        
+        # Supprimer la ponctuation du texte
+        cleaned_text = re.sub(r'[.,!?;]', '', self.text)  # Enlève les virgules, points, points d'exclamation, points d'interrogation et points-virgules
+        words = cleaned_text.split()  # Diviser le texte nettoyé en mots
         last_index = -1  # Pour suivre la position du dernier mot-clé analysé
         
         for keyword in self.keywords:
