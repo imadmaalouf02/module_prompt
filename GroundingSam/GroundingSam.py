@@ -6,6 +6,8 @@ import cv2
 from tqdm.notebook import tqdm
 from .groundingdino.util.inference import Model
 import json
+import xml.etree.ElementTree as ET
+
 
 import numpy as np
 from .segment_anything import sam_model_registry, SamPredictor
@@ -303,3 +305,61 @@ class GroundingSam:
                 json.dump(annotation_data, json_file, indent=4)
 
         print(f"Annotations saved to {output_dir}.")
+
+  
+  def save_annotations_as_xml(self, output_dir='./annotations_xml'):
+    """
+    Enregistre les annotations sous forme de fichiers XML.
+    
+    :param output_dir: Le répertoire où les fichiers XML seront enregistrés.
+    """
+    # Créer le répertoire de sortie s'il n'existe pas
+    os.makedirs(output_dir, exist_ok=True)
+
+    for image_name, detections in self.annotations.items():
+        # Préparer les données d'annotation
+        annotation_data = ET.Element("annotation")
+        
+        # Ajouter le nom de fichier
+        filename = ET.SubElement(annotation_data, "filename")
+        filename.text = image_name
+        
+        # Ajouter la taille de l'image (vous devez avoir la taille de l'image ici)
+        image_height, image_width, _ = self.images[image_name].shape  # Assurez-vous que l'image est chargée
+        size = ET.SubElement(annotation_data, "size")
+        width = ET.SubElement(size, "width")
+        width.text = str(image_width)
+        height = ET.SubElement(size, "height")
+        height.text = str(image_height)
+        depth = ET.SubElement(size, "depth")
+        depth.text = "3"  # Assuming RGB images
+
+        # Ajouter les objets détectés
+        for _, _, confidence, class_id, bounding_box in detections:
+            obj = ET.SubElement(annotation_data, "object")
+            name = ET.SubElement(obj, "name")
+            name.text = self.classes[class_id]
+            pose = ET.SubElement(obj, "pose")
+            pose.text = "Unspecified"
+            truncated = ET.SubElement(obj, "truncated")
+            truncated.text = "0"
+            difficult = ET.SubElement(obj, "difficult")
+            difficult.text = "0"
+            bndbox = ET.SubElement(obj, "bndbox")
+            xmin = ET.SubElement(bndbox, "xmin")
+            xmin.text = str(int(bounding_box[0]))  # Assuming bounding_box is [xmin, ymin, xmax, ymax]
+            ymin = ET.SubElement(bndbox, "ymin")
+            ymin.text = str(int(bounding_box[1]))
+            xmax = ET.SubElement(bndbox, "xmax")
+            xmax.text = str(int(bounding_box[2]))
+            ymax = ET.SubElement(bndbox, "ymax")
+            ymax.text = str(int(bounding_box[3]))
+
+        # Déterminer le chemin du fichier XML
+        xml_file_path = os.path.join(output_dir, f"{os.path.splitext(image_name)[0]}.xml")
+
+        # Écrire les données d'annotation dans le fichier XML
+        tree = ET.ElementTree(annotation_data)
+        tree.write(xml_file_path)
+
+    print(f"Annotations saved to {output_dir}.")
