@@ -274,92 +274,60 @@ class GroundingSam:
             size=(2 * 4, len(annotations) * 4)
         )
 
-  def save_annotations_as_json(self, output_dir='./annotations_json'):
-        """
-        Enregistre les annotations sous forme de fichiers JSON.
-        
-        :param output_dir: Le répertoire où les fichiers JSON seront enregistrés.
-        """
-        # Créer le répertoire de sortie s'il n'existe pas
-        os.makedirs(output_dir, exist_ok=True)
-
-        for image_name, detections in self.annotations.items():
-            # Préparer les données d'annotation
-            annotation_data = {
-                "image_name": image_name,
-                "detections": []
-            }
-
-            for _, _, confidence, class_id, bounding_box in detections:
-                annotation_data["detections"].append({
-                    "label": self.classes[class_id],
-                    "confidence": float(confidence),  # Conversion en float standard
-                    "bounding_box": bounding_box.tolist() if isinstance(bounding_box, np.ndarray) else bounding_box
-                })
-
-            # Déterminer le chemin du fichier JSON
-            json_file_path = os.path.join(output_dir, f"{image_name}.json")
-
-            # Écrire les données d'annotation dans le fichier JSON
-            with open(json_file_path, 'w') as json_file:
-                json.dump(annotation_data, json_file, indent=4)
-
-        print(f"Annotations saved to {output_dir}.")
-
-  
-  def save_annotations_as_xml(self, output_dir='./annotations_xml'):
-    """
-    Enregistre les annotations sous forme de fichiers XML.
+  def save_new_annotations(self, output_path, approximation_percentage=0.75):
+        # Initialize the COCO data structure
+        coco_data = {
+            "images": [],
+            "annotations": [],
+            "categories": []
+        }
     
-    :param output_dir: Le répertoire où les fichiers XML seront enregistrés.
-    """
-    # Créer le répertoire de sortie s'il n'existe pas
-    os.makedirs(output_dir, exist_ok=True)
-
-    for image_name, detections in self.annotations.items():
-        # Préparer les données d'annotation
-        annotation_data = ET.Element("annotation")
-        
-        # Ajouter le nom de fichier
-        filename = ET.SubElement(annotation_data, "filename")
-        filename.text = image_name
-        
-        # Ajouter la taille de l'image (vous devez avoir la taille de l'image ici)
-        image_height, image_width, _ = self.images[image_name].shape  # Assurez-vous que l'image est chargée
-        size = ET.SubElement(annotation_data, "size")
-        width = ET.SubElement(size, "width")
-        width.text = str(image_width)
-        height = ET.SubElement(size, "height")
-        height.text = str(image_height)
-        depth = ET.SubElement(size, "depth")
-        depth.text = "3"  # Assuming RGB images
-
-        # Ajouter les objets détectés
-        for _, _, confidence, class_id, bounding_box in detections:
-            obj = ET.SubElement(annotation_data, "object")
-            name = ET.SubElement(obj, "name")
-            name.text = self.classes[class_id]
-            pose = ET.SubElement(obj, "pose")
-            pose.text = "Unspecified"
-            truncated = ET.SubElement(obj, "truncated")
-            truncated.text = "0"
-            difficult = ET.SubElement(obj, "difficult")
-            difficult.text = "0"
-            bndbox = ET.SubElement(obj, "bndbox")
-            xmin = ET.SubElement(bndbox, "xmin")
-            xmin.text = str(int(bounding_box[0]))  # Assuming bounding_box is [xmin, ymin, xmax, ymax]
-            ymin = ET.SubElement(bndbox, "ymin")
-            ymin.text = str(int(bounding_box[1]))
-            xmax = ET.SubElement(bndbox, "xmax")
-            xmax.text = str(int(bounding_box[2]))
-            ymax = ET.SubElement(bndbox, "ymax")
-            ymax.text = str(int(bounding_box[3]))
-
-        # Déterminer le chemin du fichier XML
-        xml_file_path = os.path.join(output_dir, f"{os.path.splitext(image_name)[0]}.xml")
-
-        # Écrire les données d'annotation dans le fichier XML
-        tree = ET.ElementTree(annotation_data)
-        tree.write(xml_file_path)
-
-    print(f"Annotations saved to {output_dir}.")
+        # Add new classes to categories
+        coco_data["categories"] = [
+            {"id": int(idx), "name": class_name, "supercategory": "none"}
+            for idx, class_name in enumerate(self.new_classes)
+        ]
+    
+        annotation_id = 0
+    
+        # Iterate over images and annotations
+        for image_id, (image_name, detections) in enumerate(self.annotations.items()):
+            image = self.images[image_name]
+            height, width, _ = image.shape
+    
+            # Add image metadata
+            coco_data["images"].append({
+                "id": int(image_id),
+                "file_name": image_name,
+                "width": int(width),
+                "height": int(height)
+            })
+    
+            # Iterate over detections and filter to only include new classes
+            for bbox, mask, class_id, confidence in zip(
+                detections.xyxy, detections.mask, detections.class_id, detections.confidence
+            ):
+                if class_id >= len(self.new_classes):  # Skip classes not in new_classes
+                    continue
+    
+                # Convert bounding box to COCO format [x, y, width, height]
+                x_min, y_min, x_max, y_max = bbox
+                coco_bbox = [float(x_min), float(y_min), float(x_max - x_min), float(y_max - y_min)]
+    
+                # Add annotation
+                coco_data["annotations"].append({
+                    "id": int(annotation_id),
+                    "image_id": int(image_id),
+                    "category_id": int(class_id),
+                    "bbox": coco_bbox,
+                    "area": float((x_max - x_min) * (y_max - y_min)),
+                    "iscrowd": 0,
+                    "segmentation": self._get_segmentation_from_mask(mask, approximation_percentage)
+                })
+                annotation_id += 1
+    
+        # Save the COCO annotations to a JSON file
+        with open(output_path, 'w') as f:
+            json.dump(coco_data, f, indent=4)
+    
+        print(f"Annotations with new classes saved to {output_path}")
