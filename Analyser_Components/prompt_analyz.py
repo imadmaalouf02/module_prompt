@@ -145,6 +145,31 @@ class prompt_analyzer:
         num_syllables = sum(count_syllables(word) for word in words)
         flesch_score = round(206.835 - 1.015 * (num_words / num_sentences) - 84.6 * (num_syllables / num_words), 2)
         return flesch_score
+    
+
+    def find_best_prompts_by_similarity(self, input_prompt):
+        # Obtenir les prompts non ponctués pour la comparaison
+        prompts_unpunctuated, _, _, _ = self.prompt_processing()
+        
+        # Ajouter l'input_prompt à la liste pour le calcul de similarité
+        prompts_unpunctuated_with_input = prompts_unpunctuated + [input_prompt.translate(str.maketrans('', '', string.punctuation))]
+        
+        # Calculer la matrice de similarité
+        vectorizer = TfidfVectorizer()
+        tfidf_matrix = vectorizer.fit_transform(prompts_unpunctuated_with_input)
+        similarity_matrix = cosine_similarity(tfidf_matrix, tfidf_matrix)
+
+        # Obtenir les similarités du prompt d'entrée avec les autres prompts
+        input_prompt_index = len(prompts_unpunctuated)  # Index du prompt d'entrée
+        similarities = similarity_matrix[input_prompt_index][:len(prompts_unpunctuated)]
+
+        # Obtenir les indices des deux meilleurs prompts
+        best_prompt_indices = similarities.argsort()[-2:][::-1]  # Obtenir les indices des deux meilleurs
+
+        # Récupérer les meilleurs prompts
+        best_prompts = [self.prompts_list[i] for i in best_prompt_indices]
+
+        return best_prompts
 
 
 # def filter_prompts_by_objects(self, required_objects):

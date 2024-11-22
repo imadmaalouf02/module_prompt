@@ -5,6 +5,7 @@ from typing import List
 import cv2
 from tqdm.notebook import tqdm
 from .groundingdino.util.inference import Model
+import json
 
 import numpy as np
 from .segment_anything import sam_model_registry, SamPredictor
@@ -270,3 +271,35 @@ class GroundingSam:
             grid_size=(len(annotations), 2),
             size=(2 * 4, len(annotations) * 4)
         )
+
+  def save_annotations_as_json(self, output_dir='./annotations_json'):
+        """
+        Enregistre les annotations sous forme de fichiers JSON.
+        
+        :param output_dir: Le répertoire où les fichiers JSON seront enregistrés.
+        """
+        # Créer le répertoire de sortie s'il n'existe pas
+        os.makedirs(output_dir, exist_ok=True)
+
+        for image_name, detections in self.annotations.items():
+            # Préparer les données d'annotation
+            annotation_data = {
+                "image_name": image_name,
+                "detections": []
+            }
+
+            for _, _, confidence, class_id, bounding_box in detections:
+                annotation_data["detections"].append({
+                    "label": self.classes[class_id],
+                    "confidence": confidence,
+                    "bounding_box": bounding_box
+                })
+
+            # Déterminer le chemin du fichier JSON
+            json_file_path = os.path.join(output_dir, f"{image_name}.json")
+
+            # Écrire les données d'annotation dans le fichier JSON
+            with open(json_file_path, 'w') as json_file:
+                json.dump(annotation_data, json_file, indent=4)
+
+        print(f"Annotations saved to {output_dir}.")
