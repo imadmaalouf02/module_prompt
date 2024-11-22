@@ -274,7 +274,165 @@ class GroundingSam:
             size=(2 * 4, len(annotations) * 4)
         )
 
-  def save_new_annotations(self, output_path, approximation_percentage=0.75):
+class AutomaticLabel(GroundingSam):
+    def __init__(self, base_classes, new_classes=None, images_dir="./data/", annotations_dir="./annotations/", images_extensions=['jpg', 'jpeg', 'png']):
+        # Combine base classes with new classes
+        self.base_classes = base_classes  # Base classes for detection
+        self.new_classes = new_classes or base_classes  # New classes for annotation
+        self.classes = base_classes  # Default to base classes for detection
+        
+        # Initialize the parent class
+        super().__init__(classes=self.base_classes, images_dir=images_dir, annotations_dir=annotations_dir, images_extensions=images_extensions)
+
+    def annotate_images(self):
+        plot_images = []
+        plot_titles = []
+
+        box_annotator = sv.BoxAnnotator()
+        mask_annotator = sv.MaskAnnotator()
+
+        # Use the new classes for annotation
+        classes_to_use = self.new_classes
+
+        for image_name, detections in self.detections.items():
+            image = self.images[image_name]
+            plot_images.append(image)
+            plot_titles.append(image_name)
+
+            labels = [
+                f"{classes_to_use[class_id]} {confidence:0.2f}"  # Use new classes for labels
+                for confidence, class_id in zip(detections.confidence, detections.class_id)
+            ]
+            annotated_image = mask_annotator.annotate(scene=image.copy(), detections=detections)
+            annotated_image = box_annotator.annotate(scene=annotated_image, detections=detections, labels=labels)
+            plot_images.append(annotated_image)
+            title = " ".join(set([
+                classes_to_use[class_id]  # Use new classes for titles
+                for class_id in detections.class_id
+            ]))
+            plot_titles.append(title)
+
+        sv.plot_images_grid(
+            images=plot_images,
+            titles=plot_titles,
+            grid_size=(len(self.detections), 2),
+            size=(2 * 4, len(self.detections) * 4)
+        )
+
+
+    def get_masks(self, BOX_TRESHOLD=0.35, TEXT_TRESHOLD=0.25, class_enhancer=enhance_class_name):
+        if not self.detections:  # If detections haven't been calculated, do so
+            self._calculate_detections(BOX_TRESHOLD, TEXT_TRESHOLD, class_enhancer)
+        
+        # Prepare the mapping from base classes to new classes
+        base_to_new_mapping = {i: i for i in range(len(self.base_classes))}  # Default mapping
+        if self.new_classes:
+            base_to_new_mapping = {
+                base_idx: new_idx
+                for base_idx, new_idx in zip(range(len(self.base_classes)), range(len(self.new_classes)))
+            }
+    
+        # Apply the class mapping to detections
+        for image_name, detections in self.detections.items():
+            # Map detections to new classes
+            detections = self._map_detections_to_new_classes(detections, base_to_new_mapping)
+            
+            # Generate masks
+            image = self.images[image_name]
+            detections.mask = segment(
+                sam_predictor=sam_predictor,
+                image=cv2.cvtColor(image, cv2.COLOR_BGR2RGB),
+                xyxy=detections.xyxy
+            )
+            self.annotations[image_name] = detections
+        
+        # Plotting logic
+        plot_images = []
+        plot_titles = []
+        
+        box_annotator = sv.BoxAnnotator()
+        mask_annotator = sv.MaskAnnotator()
+        
+        for image_name, detections in self.annotations.items():
+            image = self.images[image_name]
+            plot_images.append(image)
+            plot_titles.append(image_name)
+        
+            labels = [
+                f"{self.new_classes[class_id]} {confidence:0.2f}"  # Use new classes for labels
+                for _, _, confidence, class_id, _ in detections
+            ]
+            annotated_image = mask_annotator.annotate(scene=image.copy(), detections=detections)
+            annotated_image = box_annotator.annotate(scene=annotated_image, detections=detections, labels=labels)
+            plot_images.append(annotated_image)
+            title = " ".join(set([
+                self.new_classes[class_id]  # Use new classes for titles
+                for class_id in detections.class_id
+            ]))
+            plot_titles.append(title)
+        
+        sv.plot_images_grid(
+            images=plot_images,
+            titles=plot_titles,
+            grid_size=(len(self.annotations), 2),
+            size=(2 * 4, len(self.annotations) * 4)
+        )
+
+  
+    def _map_detections_to_new_classes(self, detections, base_to_new_mapping):
+        """
+        Map detections from base classes to new classes based on a mapping.
+    
+        Args:
+            detections: A Detections object with attributes `class_id` (array).
+            base_to_new_mapping: Dictionary mapping base class indices to new class indices.
+    
+        Returns:
+            Updated Detections object with remapped class IDs.
+        """
+        # Update class IDs based on the mapping
+        detections.class_id = np.array([
+            base_to_new_mapping.get(class_id, class_id)  # Map or keep original
+            for class_id in detections.class_id
+        ])
+        return detections
+
+
+    def _calculate_detections(self, BOX_TRESHOLD=0.35, TEXT_TRESHOLD=0.25, class_enhancer=enhance_class_name):
+        """
+        Override detection logic to detect based on base classes but annotate based on new classes.
+        """
+        # Prepare a mapping from base to new class indices
+        base_to_new_mapping = {i: i for i in range(len(self.base_classes))}  # Default mapping if no new classes
+        
+        if self.new_classes:
+            base_to_new_mapping = {
+                base_idx: new_idx
+                for base_idx, new_idx in zip(range(len(self.base_classes)), range(len(self.new_classes)))
+            }
+        
+        for image_path in tqdm(self.image_paths):
+            image_name = image_path.name
+            image_path = str(image_path)
+            image = cv2.imread(image_path)
+
+            # Detect objects using base classes
+            detections = grounding_dino_model.predict_with_classes(
+                image=image,
+                classes=enhance_class_name(self.base_classes),
+                box_threshold=BOX_TRESHOLD,
+                text_threshold=TEXT_TRESHOLD
+            )
+            detections = detections[detections.class_id != None]
+
+            # Map detections to new classes
+            detections = self._map_detections_to_new_classes(detections, base_to_new_mapping)
+            
+            self.images[image_name] = image
+            self.detections[image_name] = detections
+            self.annotations[image_name] = detections
+    
+    def save_new_annotations(self, output_path, approximation_percentage=0.75):
         # Initialize the COCO data structure
         coco_data = {
             "images": [],
@@ -331,3 +489,20 @@ class GroundingSam:
             json.dump(coco_data, f, indent=4)
     
         print(f"Annotations with new classes saved to {output_path}")
+
+
+    def _get_segmentation_from_mask(self, mask, approximation_percentage=0.75):
+        from skimage.measure import approximate_polygon, find_contours
+    
+        contours = find_contours(mask, 0.5)
+        segmentation = []
+    
+        for contour in contours:
+            # Approximate the contour
+            contour = approximate_polygon(contour, tolerance=approximation_percentage)
+            if len(contour) < 6:  # Skip invalid polygons
+                continue
+            # Convert to COCO segmentation format
+            segmentation.append(contour.ravel().tolist())
+    
+        return segmentation
