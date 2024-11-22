@@ -291,8 +291,8 @@ class GroundingSam:
             for _, _, confidence, class_id, bounding_box in detections:
                 annotation_data["detections"].append({
                     "label": self.classes[class_id],
-                    "confidence": confidence,
-                    "bounding_box": bounding_box
+                    "confidence": float(confidence),  # Conversion en float standard
+                    "bounding_box": bounding_box.tolist() if isinstance(bounding_box, np.ndarray) else bounding_box
                 })
 
             # Déterminer le chemin du fichier JSON
@@ -303,4 +303,3 @@ class GroundingSam:
                 json.dump(annotation_data, json_file, indent=4)
 
         print(f"Annotations saved to {output_dir}.")
-        
