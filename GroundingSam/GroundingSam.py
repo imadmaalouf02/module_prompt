@@ -303,3 +303,4 @@ class GroundingSam:
                 json.dump(annotation_data, json_file, indent=4)
 
         print(f"Annotations saved to {output_dir}.")
+        
