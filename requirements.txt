@@ -9,3 +9,4 @@ auto-tqdm
 language_tool_python
 supervision
 autocorrect
+transformers
